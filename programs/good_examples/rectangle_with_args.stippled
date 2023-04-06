@@ -1,0 +1,21 @@
+<
+Pos(base);
+Int(width);
+Int(height)
+>
+Begin
+    Int(x);
+    Print(base);
+    Print(width);
+    Print([1,2,3]);
+    For x From 0 To width Step 1
+        Begin
+            Draw(Point(base + Pos(x,0),Color(0,0,0)));
+            Draw(Point(base + Pos(x,height),Color(0,0,0)))
+        End;
+    For x From 0 To height Step 1
+        Begin
+            Draw(Point(base + Pos(0,x),Color(0,0,0)));
+            Draw(Point(base + Pos(width,x),Color(0,0,0)))
+        End
+End

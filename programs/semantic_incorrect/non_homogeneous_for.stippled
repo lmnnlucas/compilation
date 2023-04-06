@@ -1,0 +1,7 @@
+Begin
+    Int(x);
+    For x From True To 3.2 Step Pos(1,2)
+    Begin
+        Copy(x,4)
+    End
+End

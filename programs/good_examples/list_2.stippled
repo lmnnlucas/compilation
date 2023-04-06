@@ -1,0 +1,12 @@
+Begin
+    List(Int)(l);
+    Copy(l,[0,1,2,3,4,5,6,7,8,9,10]);
+    Foreach x In l
+    Begin
+        Copy(x, 20*x)
+    End;
+    Foreach x In l
+    Begin
+        Draw(Point(Pos(x,x), Color(0, 0, 0)))
+    End
+End

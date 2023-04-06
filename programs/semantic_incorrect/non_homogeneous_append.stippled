@@ -1,0 +1,5 @@
+Begin
+    List(Int)(l);
+    Copy(l,[1,2]);
+    Copy(l,3.2::l)
+End

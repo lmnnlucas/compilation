@@ -1,0 +1,27 @@
+// Dessine un rectangle cyan et magenta
+Begin
+    Int(x);
+    Int(y);
+    Int(xMin);
+    Int(yMin);
+    Int(xMax);
+    Int(yMax);
+    Copy(xMin, 0);
+    Copy(yMin, 0);
+    Copy(xMax, 200);
+    Copy(yMax, 100);
+    Color(magenta);
+    Copy(magenta, Color(255, 0, 255));
+    Color(cyan);
+    Copy(cyan, Color(0, 255, 255));
+    For x From xMin To xMax Step 1 
+        Begin
+            Draw(Point(Pos(x, yMin), magenta));
+            Draw(Point(Pos(x, yMax), magenta))
+        End;
+    For y From yMin To yMax Step 1 
+        Begin
+            Draw(Point(Pos(xMin, y), cyan));
+            Draw(Point(Pos(xMax, y), cyan))
+        End
+End

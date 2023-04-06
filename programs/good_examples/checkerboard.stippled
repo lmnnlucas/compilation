@@ -1,0 +1,22 @@
+Begin
+    List(Int)(columns);
+    List(Int)(lines);
+    Int(square_size);
+    Int(l);
+    Int(c);
+    Copy(square_size, 24);
+    Foreach line In [0, 1, 2, 3, 4, 5, 6, 7] 
+        Begin
+        Copy(l, line * square_size);
+        Foreach column In [0, 1, 2, 3, 4, 5, 6, 7]
+            If ((line+column) % 2 = 0)
+            Begin
+                Copy(c, column * square_size);
+                Int(x);
+                Int(y);
+                For x From c To c+square_size Step 1
+                    For y From l To l+square_size Step 1
+                        Draw(Point(Pos(x, y), Color(0, 0, 0)))
+            End
+        End
+End

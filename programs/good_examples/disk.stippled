@@ -1,0 +1,24 @@
+// Dessine un cercle noir
+Begin
+    Float (a);
+    Float (r);
+    Int(offsetX);
+    Int(offsetY);
+    Int(center);
+    Copy(center,100);
+    Copy(offsetx, Floor(r/2.0)); 
+    Copy(offsety, offsetx);
+    Color(c);
+    Copy(c, Color(0,100,200)); 
+    For r From 0.0 To 100.0 Step 0.2
+        For a From 0.0 To (2.0*Pi) Step 0.005
+        Begin
+            Int(x);
+            Int(y);
+            Copy(c,(c+Color(1,1,1)) % Color(255,255,255));
+            Copy(x, Floor(Cos(a) * r)+center);
+            Copy(y, Floor(Sin(a) * r)+center);
+            Draw(Point(Pos(x, y), c))
+    End
+
+End

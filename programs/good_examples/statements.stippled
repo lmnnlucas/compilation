@@ -1,0 +1,23 @@
+// Instructions
+Begin
+    Int(x);
+    Copy(x, 36);
+    Int(y);
+    Copy(x, 36);
+    If (x < 120) 
+        Copy(x, x+1);
+    If (x < 120) 
+        Copy(x, x+1)
+    Else
+        Copy(x, x-1);
+    For x From 1 To 120 Step 2 
+        Copy(y, y+x);
+    Foreach x In [1, 2, 3, 4, 5, 6]
+        Copy(y, y+x);
+    Draw(Point(Pos(3, 3), Color(255, 255, 255)));
+    If (x < 120) 
+    Begin
+        Copy(x, x+1);
+        Copy(x, x+1)
+    End
+End

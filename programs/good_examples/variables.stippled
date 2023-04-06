@@ -1,0 +1,21 @@
+// définit des variables et les initialise
+Begin
+    // définitions
+    Int(k);
+    Int(l);
+    Float(x);
+    Bool(b);
+    Pos(p);
+    Color(c);
+    Point(pt);
+
+    // Affectations
+    Copy(k, 6+36-7*2%7);
+    Copy(l, k);
+    Copy(x, 66+36-7*2/56);
+    Copy(b, True And False Or Not True);
+    Copy(p, Pos(1+2, 7-5));
+    Copy(c, Color(125, 125, 125));
+    Copy(pt, Point(p, c));
+    Draw(pt)
+End

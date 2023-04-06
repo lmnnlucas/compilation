@@ -1,0 +1,6 @@
+Begin
+    Pos(p);
+    Int(x);
+    Copy(p,Pos(1,2));
+    Copy(x,p.Blue)
+End

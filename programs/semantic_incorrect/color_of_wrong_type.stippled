@@ -1,0 +1,4 @@
+Begin
+    Color(c);
+    Copy(c,Color(2.5,Pos(2,3),True))
+End

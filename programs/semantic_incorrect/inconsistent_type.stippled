@@ -1,0 +1,4 @@
+Begin
+    Int(x);
+    Copy(x,2 + [1,2,3])
+End

@@ -1,0 +1,4 @@
+Begin
+    List(Int)(l);
+    Copy(l,[1,1.2,True,Pos(1,2)])
+End

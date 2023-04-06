@@ -1,0 +1,7 @@
+// dessine les quatre coins d'un carré
+Begin
+    Draw(Point(Pos(20,20), Color(0, 0, 0)));
+    Draw(Point(Pos(100,20), Color(0, 0, 0)));
+    Draw(Point(Pos(20,100), Color(0, 0, 0)));
+    Draw(Point(Pos(100,100), Color(0, 0, 0)))
+End

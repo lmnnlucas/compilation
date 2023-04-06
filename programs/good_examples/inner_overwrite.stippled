@@ -1,0 +1,30 @@
+Begin
+    Int(x);
+    Copy(x,200);
+    Float(y);
+    For y From 10.0 To 100.0 Step 10.0
+    Begin
+        Float(x);
+        Color(c);
+        Int(center);
+        Copy(c,Color(100,100+Floor(y),100-Floor(y)));
+        Copy(center,150);
+        For x From 0.0 To 2.0*Pi Step 0.005
+        Begin
+            Int(a);
+            Int(b);
+            Copy(c,(c+Color(1,1,1)) % Color(255,255,255));
+            Copy(a, Floor(Cos(x) * y)+center);
+            Copy(b, Floor(Sin(x) * y)+center);
+            Draw(Point(Pos(a, b), c))
+        End
+    End;
+    Int(z);
+    For z From 0 To 10 Step 1
+    Begin
+        Draw(Point(Pos(x+z,x),Color(0,0,0)));
+        Draw(Point(Pos(x+z,x+z),Color(0,0,0)));
+        Draw(Point(Pos(x-z,x),Color(0,0,0)));
+        Draw(Point(Pos(x-z,x-z),Color(0,0,0)))
+    End
+End

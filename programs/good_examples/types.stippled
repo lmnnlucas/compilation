@@ -1,0 +1,42 @@
+// définit des variables et les initialise
+Begin
+    // définitions
+    Int(k);
+    Int(l);
+    Float(x);
+    Bool(b);
+    Pos(p);
+    Color(c);
+    Point(pt);
+    List(Int)(lst);
+
+    // Affectations bien typées
+    Copy(k, 6+36-7*2%7);
+    Copy(l, k);
+    Copy(x, 66+36-7*2/56);
+    Copy(b, True And False Or Not True);
+    Copy(p, Pos(1+2, 7-5));
+    Copy(c, Color(255, 255, 255));
+    Copy(pt, Point(p, c));
+    Copy(lst, []);
+    Copy(lst, [1, 2, 3]);
+    Copy(k, Head(lst));
+    Copy(lst, Tail(lst));
+    Copy(lst, 5:: lst);
+    Copy(lst, [0, 1, 2] + [3, 4, 5]);
+    
+    // Slots
+    Copy(k, p.X);
+    Copy(p.X, 36);
+    Copy(p.X, Pos(1+2, 7-5).Y);
+
+    Copy(k, c.Red);
+    Copy(c.Blue, Color(255, 255, 255).Green);
+
+    Copy(c, pt.Color);
+    Copy(pt.Color, Point(Pos(0, 0), Color(255, 255, 255)).Color);
+
+    Copy(c.Red, pt.Color.Red);
+    Copy(pt.Color.Red, Point(Pos(0, 0), Color(255, 255, 255)).Color.Red)
+
+End

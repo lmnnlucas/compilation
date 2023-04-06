@@ -1,0 +1,4 @@
+Begin
+    Int(x);
+    Copy(x, - True)
+End

@@ -1,0 +1,49 @@
+// Dessine un triangle
+// Exemple sur les champs (fields)
+Begin
+    Pos(a);
+    Pos(b);
+    Pos(c);
+    Int(x);
+    Copy(a.X, 10);
+    Copy(a.Y, 10);
+    Copy(b.X, 200);
+    Copy(b.Y, 10);
+    Copy(c.X, 100);
+    Copy(c.Y, 100);
+    Point(point);
+    Copy(point.Color, Color(0, 0, 0));
+    Pos(currentPosition);
+    For x From a.X To b.X Step 1 Begin
+        Copy(currentPosition.X, x);
+        Copy(currentPosition.Y, a.Y);
+        Copy(point.Pos, currentPosition);
+        Draw (point)
+    End;
+    Float(step);
+    Float(deltaX);
+    Copy(deltaX, (c.X - a.X));
+    Float(deltaY);
+    Copy(deltaY, (c.Y - a.Y));
+    Copy(step, Float_of_int(deltaY) / Float_of_int(deltaX));
+    Float(i);
+    Copy(i, Float_of_int(a.Y));
+    For x From a.X To c.X Step 1 Begin
+        Copy(currentPosition.X, x);
+        Copy(currentPosition.Y, Floor(i * step));
+        Copy(point.Pos, currentPosition);
+        Draw (point);
+        Copy(i, i+step)
+    End;
+    Copy(deltaX, (b.X - c.X));
+    Copy(deltaY, (b.Y - c.Y));
+    Copy(step, Float_of_int(deltaY) / Float_of_int(deltaX));
+    Copy(i, Float_of_int(c.Y));
+    For x From c.X To b.X Step 1 Begin
+        Copy(currentPosition.X, x);
+        Copy(currentPosition.Y, Floor(i - step));
+        Copy(point.Pos, currentPosition);
+        Draw (point);
+        Copy(i, i+step)
+    End
+End

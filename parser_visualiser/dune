@@ -1,0 +1,3 @@
+(library
+ (name parser_visualiser)
+ (libraries menhirLib menhirSdk lambda-term))

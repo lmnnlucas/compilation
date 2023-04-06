@@ -1,0 +1,10 @@
+// Listes
+Begin
+    List(Int)(l);
+    Copy(l, [1, 2, 3]);
+    Copy(l, []);
+    Copy(l, 1::2::3::[]);
+    Copy(l, 0:: l);
+    Copy(h, Head(l));
+    Copy(l, Tail(l))
+End

@@ -1,0 +1,535 @@
+(*Histoire de garder le vieux code accessible -- j’ai du mal à me débarrasser complètement de trucs fonctionnels que j’ai écrit ^^)*)
+
+module type parser_with_prints = sig
+  type value_parsed
+
+  val name : string
+
+  module Parser : sig
+    type token
+
+    exception Error
+
+    val main : (Lexing.lexbuf -> token) -> Lexing.lexbuf -> value_parsed
+
+    module MenhirInterpreter : sig
+      include
+        MenhirLib.IncrementalEngine.INCREMENTAL_ENGINE with type token = token
+
+      type 'a terminal
+      type _ nonterminal
+
+      include
+        MenhirLib.IncrementalEngine.INSPECTION
+          with type 'a lr1state := 'a lr1state
+          with type production := production
+          with type 'a terminal := 'a terminal
+          with type 'a nonterminal := 'a nonterminal
+          with type 'a env := 'a env
+    end
+
+    module Incremental : sig
+      val main : Lexing.position -> value_parsed MenhirInterpreter.checkpoint
+    end
+  end
+
+  val tokens : Parser.token list
+  val string_of_token : Parser.token -> string
+  val string_of_terminal : _ Parser.MenhirInterpreter.terminal -> string
+  val string_of_nonterminal : _ Parser.MenhirInterpreter.nonterminal -> string
+
+  module Lexer : sig
+    val token : Lexing.lexbuf -> Parser.token
+  end
+
+  module ParserMessages : sig
+    val message : int -> string
+  end
+end
+
+module Make (Parser : parser_with_prints) = struct
+  open Parser
+  module MI = Parser.MenhirInterpreter
+  module StateMap = Map.Make (Int)
+
+  module G = MenhirSdk.Cmly_read.Read (struct
+    let filename = name ^ ".cmly"
+  end)
+
+  let show text positions =
+    MenhirLib.ErrorReports.extract text positions
+    |> MenhirLib.ErrorReports.sanitize |> MenhirLib.ErrorReports.compress
+    |> MenhirLib.ErrorReports.shorten 20
+
+  (* let string_of_symbol (symbol : 'a MI.symbol) =
+       match symbol with
+       | MI.T a -> string_of_terminal a
+       | MI.N a -> string_of_nonterminal a
+
+     let string_of_xsymbol (MI.X symb) = string_of_symbol symb
+  *)
+
+  (* let string_of_production production =
+     string_of_xsymbol (MI.lhs production)
+     ^ " ->"
+     ^ (List.fold_left (fun acc xsymb -> acc ^ " " ^ string_of_xsymbol xsymb))
+         "" (MI.rhs production)*)
+
+  let find_short_attribute terminal =
+    List.fold_left
+      (fun acc attr ->
+        if acc <> None then acc
+        else if G.Attribute.has_label "short" attr then
+          Some (G.Attribute.payload attr)
+        else None)
+      None
+      (G.Terminal.attributes terminal)
+
+  let string_of_gsymbol = function
+    | G.N a -> G.Nonterminal.name a
+    | G.T a -> (
+        match find_short_attribute a with
+        | Some str -> str
+        | None -> G.Terminal.name a)
+
+  let string_lists_of_gprod g_prod =
+    let lhs = G.Nonterminal.name (G.Production.lhs g_prod) in
+    let rhs =
+      Array.map (fun (a, _, _) -> string_of_gsymbol a) (G.Production.rhs g_prod)
+    in
+    (lhs, rhs)
+
+  let string_of_gproduction g_prod =
+    let lhs, rhs = string_lists_of_gprod g_prod in
+    let rhs = Array.fold_left (fun acc s -> acc ^ " " ^ s) "" rhs in
+    lhs ^ " ->" ^ rhs
+
+  let string_of_production production =
+    string_of_gproduction (G.Production.of_int (MI.production_index production))
+
+  (* let string_of_stack_cell env text color =
+     match env with
+     | MI.Element (st, _, pos1, pos2) ->
+         (if color then "\027[38;5;2m" else "")
+         ^ string_of_int (MI.number st)
+         ^ " ("
+         ^ string_of_symbol (MI.incoming_symbol st)
+         ^ " : \""
+         ^ show text (pos1, pos2)
+         ^ "\")"
+         ^ if color then "\027[0m" else ""
+  *)
+
+  (* let printStack env text num =
+     let rec aux env num =
+       match MI.top env with
+       | None -> ()
+       | Some elt ->
+           Format.printf "@,%s" (string_of_stack_cell elt text (num <> 0));
+           aux
+             (match MI.pop env with Some a -> a | _ -> failwith "ouch")
+             (max (num - 1) 0)
+     in
+     Format.printf "Stack: @[<v 2>[ ";
+     match MI.top env with
+     | None -> Format.printf "]@]"
+     | Some elt ->
+         Format.printf "%s" (string_of_stack_cell elt text (num <> 0));
+         aux
+           (match MI.pop env with Some a -> a | _ -> failwith "ouch")
+           (max (num - 1) 0);
+         Format.printf "@]@,       ]"
+  *)
+
+  (* let string_of_item (prod, pos) =
+     string_of_xsymbol (MI.lhs prod)
+     ^ " ->"
+     ^ List.fold_left ( ^ ) ""
+         (List.mapi
+            (fun i symb ->
+              (if i = pos then " _ " else " ") ^ string_of_xsymbol symb)
+            (MI.rhs prod))
+     ^ if pos = List.length (MI.rhs prod) then " _" else ""
+  *)
+
+  let string_of_gitem (prod, pos) =
+    let lhs, rhs = string_lists_of_gprod prod in
+    lhs ^ " ->"
+    ^ Array.fold_left ( ^ ) ""
+        (Array.mapi (fun i symb -> (if i = pos then " _ " else " ") ^ symb) rhs)
+    ^ if pos = Array.length rhs then " _" else ""
+
+  let string_of_item (prod, pos) =
+    string_of_gitem (G.Production.of_int (MI.production_index prod), pos)
+
+  let string_of_gitems items =
+    let res =
+      List.fold_left (fun acc s -> acc ^ string_of_gitem s ^ " | ") "" items
+    in
+    String.sub res 0 (String.length res - 2)
+
+  let string_of_items items =
+    string_of_gitems
+      (List.map
+         (fun (p, n) -> (G.Production.of_int (MI.production_index p), n))
+         items)
+
+  (* let printEnvironnement env text num =
+     Format.printf "@[<v 2>  I am in state %d" (MI.current_state_number env);
+     Format.printf " < ";
+     let () =
+       try
+         Format.printf "%s"
+           (string_of_items
+              (match MI.top env with
+              | Some (Element (st, _, _, _)) -> MI.items st
+              | _ -> failwith ""))
+       with _ -> Format.printf "no elements"
+     in
+     Format.printf ">@,";
+     printStack env text num;
+     Format.printf "@]"
+  *)
+
+  let get text env i =
+    match Parser.MenhirInterpreter.get i env with
+    | Some (Parser.MenhirInterpreter.Element (_, _, pos1, pos2)) ->
+        show text (pos1, pos2)
+    | None -> "???"
+
+  let get_env checkpoint =
+    match checkpoint with
+    | MI.InputNeeded env
+    | MI.Shifting (env, _, _)
+    | MI.AboutToReduce (env, _)
+    | MI.HandlingError env ->
+        env
+    | Rejected -> failwith "reject"
+    | Accepted _ -> failwith "accepted"
+
+  (* let rec stepParsingPrinting checkpoint supplier text buffer =
+     match checkpoint with
+     | MI.Rejected ->
+         Format.printf "@]";
+         failwith "rejected"
+     | MI.Accepted a ->
+         Format.printf "Yay@,@]";
+         a
+     | MI.InputNeeded env ->
+         printEnvironnement env text 0;
+         Format.printf "@,Input needed: ";
+         let next_token = supplier () in
+         Format.printf "Reading \"%s\"@,"
+           (show text (match next_token with _, a, b -> (a, b)));
+         stepParsingPrinting
+           (MI.offer checkpoint next_token)
+           supplier text buffer
+     | MI.Shifting (env1, env2, _) ->
+         Format.printf "Shifting %s from %d to %d@,"
+           (show text (MI.positions env1))
+           (MI.current_state_number env1)
+           (MI.current_state_number env2);
+         stepParsingPrinting (MI.input_needed env2) supplier text buffer
+     | MI.AboutToReduce (env, prod) ->
+         printEnvironnement env text (List.length (MI.rhs prod));
+         let new_checkpoint = MI.resume checkpoint in
+         Format.printf "@,Reducing %s (from state %d, we reach state %d on %s)@,"
+           (string_of_production prod)
+           (try
+              match MI.pop (get_env new_checkpoint) with
+              | Some env -> MI.current_state_number env
+              | _ -> 0
+            with _ -> 0)
+           (try MI.current_state_number (get_env new_checkpoint) with _ -> -1)
+           (string_of_xsymbol (MI.lhs prod));
+         Format.printf "Last Symbol Read: \"%s\"@,"
+           (show text (MI.positions env));
+         stepParsingPrinting new_checkpoint supplier text buffer
+     | MI.HandlingError env ->
+         let location = MenhirLib.LexerUtil.range (MI.positions env) in
+         let indication =
+           "Syntax error " ^ MenhirLib.ErrorReports.show (show text) buffer ^ "."
+         in
+         let message =
+           try ParserMessages.message (MI.current_state_number env)
+           with _ -> "Not Found"
+         in
+         let message = MenhirLib.ErrorReports.expand (get text env) message in
+         Format.eprintf "\027[38;5;1m%s%s@,%s\027[0m@," location indication
+           message;
+         Format.printf "Error@,@]";
+         failwith "error"
+  *)
+
+  (* let rec stepParsingFeedback checkpoint supplier text buffer feedback =
+     match checkpoint with
+     | MI.Rejected | MI.Accepted _ -> (checkpoint, None) :: feedback
+     | MI.InputNeeded _ ->
+         let next_token = supplier () in
+         stepParsingFeedback
+           (MI.offer checkpoint next_token)
+           supplier text buffer
+           ((checkpoint, Some next_token) :: feedback)
+     | MI.Shifting (_, env2, _) ->
+         stepParsingFeedback (MI.input_needed env2) supplier text buffer
+           ((checkpoint, None) :: feedback)
+     | MI.AboutToReduce (_, _) ->
+         let new_checkpoint = MI.resume checkpoint in
+         stepParsingFeedback new_checkpoint supplier text buffer
+           ((checkpoint, None) :: feedback)
+     | MI.HandlingError env ->
+         let location = MenhirLib.LexerUtil.range (MI.positions env) in
+         let indication =
+           "Syntax error " ^ MenhirLib.ErrorReports.show (show text) buffer ^ "."
+         in
+         let message =
+           try ParserMessages.message (MI.current_state_number env)
+           with _ -> "Not Found"
+         in
+         let message = MenhirLib.ErrorReports.expand (get text env) message in
+         Format.eprintf "\027[38;5;1m%s%s@,%s\027[0m@," location indication
+           message;
+         Format.printf "Error@,@]";
+         (checkpoint, None) :: feedback
+  *)
+
+  (* let print_feedback text (checkpoint, read_token) =
+     match (checkpoint, read_token) with
+     | MI.Rejected, _ -> Format.printf "At this point, the parser rejected@,"
+     | MI.Accepted _, _ -> Format.printf "At this point, the parser accepted@,"
+     | MI.InputNeeded env, Some token -> (
+         printEnvironnement env text 0;
+         Format.printf "@,Input needed: Acceptable tokens: ";
+         try
+           let pos = Lexing.dummy_pos in
+           List.iter
+             (fun t ->
+               if MI.acceptable checkpoint t pos then
+                 Format.printf "%s," (string_of_token t))
+             tokens;
+           Format.printf "@,Reading \"%s\"@,"
+             (show text (match token with _, a, b -> (a, b)))
+         with _ -> Format.printf "end of file reached@,")
+     | MI.Shifting (env1, env2, _), _ ->
+         Format.printf "Shifting %s from %d to %d@,"
+           (show text (MI.positions env1))
+           (MI.current_state_number env1)
+           (MI.current_state_number env2)
+     | MI.AboutToReduce (env, prod), _ ->
+         printEnvironnement env text (List.length (MI.rhs prod));
+         let new_checkpoint = MI.resume checkpoint in
+         Format.printf "@,Reducing %s (from state %d, we reach state %d on %s)@,"
+           (string_of_production prod)
+           (try
+              match MI.pop (get_env new_checkpoint) with
+              | Some env -> MI.current_state_number env
+              | _ -> 0
+            with _ -> 0)
+           (try MI.current_state_number (get_env new_checkpoint) with _ -> -1)
+           (string_of_xsymbol (MI.lhs prod));
+         Format.printf "Last Symbol Read: \"%s\"@,"
+           (show text (MI.positions env))
+     | MI.HandlingError _, _ ->
+         Format.printf
+           "At this point, the parser encountered an error and stopped@,"
+     | _ -> failwith "Impossible"
+  *)
+
+  (* to continue later -- maybe, if we want to print the tree)*)
+  (* let feedback_to_tree text feedback =
+     let compute_next (checkpoint, read_token) tree =
+       match (checkpoint, read_token) with
+       | MI.Rejected, _ ->
+           StandaloneDerivations.apply_action tree StandaloneDerivations.Reject
+       | MI.Accepted _, _ ->
+           StandaloneDerivations.apply_action tree StandaloneDerivations.Accept
+       | MI.InputNeeded _, Some token ->
+           StandaloneDerivations.apply_action tree
+             (StandaloneDerivations.Input
+                (show text (match token with _, a, b -> (a, b))))
+       | MI.Shifting (_, env, _), _ ->
+           StandaloneDerivations.apply_action tree
+             (StandaloneDerivations.Shift (MI.current_state_number env))
+       | MI.AboutToReduce (_, prod), _ ->
+           StandaloneDerivations.apply_action tree
+             (StandaloneDerivations.Reduce
+                ( string_of_xsymbol (MI.lhs prod),
+                  string_of_production prod,
+                  (try MI.current_state_number (get_env (MI.resume checkpoint))
+                   with _ -> -1),
+                  List.length (MI.rhs prod) ))
+       | MI.HandlingError _, _ -> tree
+       | _ -> failwith "impossible"
+     in
+
+     let rec compute_list feedback acc =
+       match feedback with
+       | [] -> List.rev acc
+       | f :: t -> compute_list t (compute_next f (List.hd acc) :: acc)
+     in
+
+     List.tl (compute_list feedback [ StandaloneDerivations.initialStack ])
+  *)
+
+  (*let update_state_map state_map env =
+    match StateMap.find_opt (MI.current_state_number env) state_map with
+    | Some _ -> state_map
+    | None ->
+        StateMap.add
+          (MI.current_state_number env)
+          (match MI.top env with
+          | Some (Element (st, _, _, _)) ->
+              List.map string_of_item (MI.items st)
+          | _ -> [ "Initial state" ])
+          state_map*)
+
+  let rec stepParsingDerivations checkpoint supplier text buffer derivations =
+    match checkpoint with
+    | MI.Rejected ->
+        ( None,
+          List.rev
+            (StandaloneDerivations.apply_action (List.hd derivations)
+               StandaloneDerivations.Reject
+            :: derivations) )
+    | MI.Accepted value ->
+        ( Some value,
+          List.rev
+            (StandaloneDerivations.apply_action (List.hd derivations)
+               StandaloneDerivations.Accept
+            :: derivations) )
+    | MI.InputNeeded _ ->
+        let t, n1, n2 = supplier () in
+        stepParsingDerivations
+          (MI.offer checkpoint (t, n1, n2))
+          supplier text buffer
+          (StandaloneDerivations.apply_action (List.hd derivations)
+             (StandaloneDerivations.Input (show text (n1, n2)))
+          :: derivations)
+    | MI.Shifting (_, env2, notEnd) ->
+        let t, n1, n2 = supplier () in
+        let tk =
+          try
+            string_of_gsymbol
+              (match
+                 G.Lr0.incoming
+                   (G.Lr1.lr0 (G.Lr1.of_int (MI.current_state_number env2)))
+               with
+              | Some s -> s
+              | None -> failwith "")
+          with _ -> ""
+        in
+        stepParsingDerivations
+          (MI.offer (MI.input_needed env2) (t, n1, n2))
+          supplier text buffer
+          (StandaloneDerivations.apply_action (List.hd derivations)
+             (StandaloneDerivations.ShiftRead
+                ( MI.current_state_number env2,
+                  tk,
+                  if notEnd then
+                    let s = show text (n1, n2) in
+                    if s = "" then "EOF" else s
+                  else "END OF FILE" ))
+          :: derivations)
+    | MI.AboutToReduce (_, prod) ->
+        let new_checkpoint = MI.resume checkpoint in
+        let prod_str = string_of_production prod in
+        let lhs_str = List.hd (String.split_on_char ' ' prod_str) in
+        stepParsingDerivations new_checkpoint supplier text buffer
+          (StandaloneDerivations.apply_action (List.hd derivations)
+             (StandaloneDerivations.Reduce
+                ( lhs_str,
+                  prod_str,
+                  (try MI.current_state_number (get_env (MI.resume checkpoint))
+                   with _ -> G.Lr0.count - 1),
+                  List.length (MI.rhs prod) ))
+          :: derivations)
+    | MI.HandlingError env ->
+        let location = MenhirLib.LexerUtil.range (MI.positions env) in
+        let indication =
+          "Syntax error " ^ MenhirLib.ErrorReports.show (show text) buffer ^ "."
+        in
+        let message =
+          try ParserMessages.message (MI.current_state_number env)
+          with _ -> "Not Found"
+        in
+        let message = MenhirLib.ErrorReports.expand (get text env) message in
+        Format.eprintf "\027[38;5;1m%s%s@,%s\027[0m@," location indication
+          message;
+        Format.printf "Error@,@]";
+        ( None,
+          List.rev
+            (StandaloneDerivations.apply_action (List.hd derivations)
+               StandaloneDerivations.Error
+            :: derivations) )
+
+  (* let parseFile file =
+     let text, lexbuf = MenhirLib.LexerUtil.read file in
+     let supplier = MI.lexer_lexbuf_to_supplier Lexer.token lexbuf in
+     let buffer, supplier = MenhirLib.ErrorReports.wrap_supplier supplier in
+     let checkpoint = Parser.Incremental.main lexbuf.lex_curr_p in
+     (*printing directly*)
+     (*Format.printf "@[<v 0>";
+       let res = stepParsingPrinting checkpoint supplier text buffer in
+       Format.printf "@]";
+       res
+     *)
+     (*feedback*)
+     let feedback = stepParsingFeedback checkpoint supplier text buffer [] in
+     let () =
+       Format.printf "@[<v 0>";
+       List.iter (print_feedback text) (List.rev feedback);
+       Format.printf "@]"
+     in
+     let derivations = feedback_to_tree text (List.rev feedback) in
+     let channel = open_out "toto" in
+     let ch = Format.formatter_of_out_channel channel in
+     let () =
+       Format.fprintf ch "@[<v 0>";
+       print_trees ch (*feedback*) derivations;
+       Format.fprintf ch "@]@,"
+     in
+     let () = close_out channel in
+     match feedback with
+     | (MI.Accepted a, _) :: _ -> a
+     | _ -> failwith "no value produced"
+  *)
+
+  let state_to_lr0_list num =
+    let lr0 = G.Lr1.lr0 (G.Lr1.of_int num) in
+    let item_list = G.Lr0.items lr0 in
+    List.map string_of_gitem item_list
+
+  let parseFileInteract file_to_parse log_file =
+    let text, lexbuf = MenhirLib.LexerUtil.read file_to_parse in
+    let supplier = MI.lexer_lexbuf_to_supplier Lexer.token lexbuf in
+    let buffer, supplier = MenhirLib.ErrorReports.wrap_supplier supplier in
+    let checkpoint = Parser.Incremental.main lexbuf.lex_curr_p in
+    let value, derivations =
+      stepParsingDerivations checkpoint supplier text buffer
+        [ StandaloneDerivations.initialStack ]
+    in
+    (match log_file with
+    | Some name ->
+        let channel = open_out name in
+        let ch = Format.formatter_of_out_channel channel in
+        Format.fprintf ch "@[<v 0> %a @]@,"
+          StandaloneDerivations.print_derivation_sequence_list derivations;
+        close_out channel
+    | None -> ());
+    StandaloneDerivations.derivations_explorer derivations state_to_lr0_list;
+    match value with Some v -> v | None -> failwith "no value produced"
+
+  (*Bon, ça parse bien depuis stdin MAIS le texte ne va évidemment pas (ça doit pouvoir se contourner par d’autres fonctions cela dit) et surtout ce n’est pas exécuté à chaque ligne, ce qui serait mieux…*)
+  let parse_stdin () =
+    let lexbuf = Lexing.from_channel stdin in
+    let supplier = MI.lexer_lexbuf_to_supplier Lexer.token lexbuf in
+    let buffer, supplier = MenhirLib.ErrorReports.wrap_supplier supplier in
+    let checkpoint = Parser.Incremental.main lexbuf.lex_curr_p in
+    Format.printf "@[<v 0>";
+    let res, _ =
+      stepParsingDerivations checkpoint supplier "text" buffer
+        [ StandaloneDerivations.initialStack ]
+    in
+    Format.printf "@]";
+    res
+end
