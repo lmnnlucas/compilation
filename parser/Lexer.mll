@@ -69,6 +69,8 @@ rule token = parse
     | "Y"               { Y }
     | "::"              { CONS }
     | "Do"              { DO }
+    | "Pi"              { FLOAT(Float.pi)}
+
 
     | "\"" ([^ '\"']* as s) "\""  { STRING(s) }
     | (digit)* "." (digit)* as s {FLOAT(try float_of_string s with Failure _ -> raise (Error(s)) )}
