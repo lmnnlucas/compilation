@@ -65,11 +65,14 @@
 
 %token EOF
 
-%nonassoc ELSE
+%nonassoc THEN
+%nonassoc ELSE 
 %left AND OR
 %left EQ NEQ LT GT LEQ GEQ
 %left ADD SUB 
 %left MUL DIV MOD
+%left DOT
+%left CONS
 %nonassoc NOT HEAD TAIL FLOOR COS SIN FLOAT_OF_INT
 
 %token BLUE RED GREEN
@@ -78,18 +81,16 @@
 %%
 
 main:
-| BEGIN statement_list END EOF                  { Program (List.rev $1) }
-| BEGIN statement END                           { Statement $1 }
-| LT statement_list GT                          {}
-| statement  EOF                                { Statement $1 }
+| LT argument_list GT statement EOF             { Program ($2, $4) }
 | EOF                                           { Program([],Block([],Annotation.create $loc)) }
 
-statement_list:
-| statement { [$1] }
-| statement_list SEMICOLON statement { [$3::$1] }  
-| { [] }
+argument:
+| type_basic L_PAR STRING R_PAR SEMICOLON       { Argument ($3, $1, Annotation.create $loc) }
 
-// expression_list:
+argument_list:
+| argument { [$1] }
+| argument_list SEMICOLON argument { $3::$1 }  
+| { [] }
 
 type_basic:
 | INT_TYP { Type_int }
@@ -97,33 +98,47 @@ type_basic:
 | BOOL_TYP { Type_bool }
 
 statement:
-| COPY L_PAR ID COMMA expression R_PAR SEMICOLON                    { Assignement ($3 $5 Annotation.create $loc) }
-| type_basic L_PAR STRING R_PAR SEMICOLON                           { Variable_declaration ($3 $1 Annotation.create $loc) }
-| BEGIN statement_list END                                          { Block([$2], Annotation.create $loc) }
-| IF expression THEN statement ELSE statement                       { IfThenElse( $2 $4 $6 Annotation.create $loc) }
-| IF expression THEN statement                                      { IfThenElse ($2 $4 Nop)}
-| FOR ID FROM expression TO expression STEP expression statement    { For ($2 $4 $6 $7 Annotation.create $loc) }
-| FOREACH ID IN expression statement                                { Foreach ($2 $4 $5 Annotation.create $loc) }
-| DRAW L_PAR expression R_PAR SEMICOLON                             { Draw ($3 Annotation.create $loc) }
-| PRINT expression SEMICOLON                                        { PRINT ($2 Annotation.create $loc) }  
+| COPY L_PAR expression COMMA expression R_PAR SEMICOLON            { Assignment ($3, $5, Annotation.create $loc) }
+| LIST L_PAR type_basic R_PAR L_PAR STRING R_PAR                    { Variable_declaration ($6, $3, Annotation.create $loc) }
+| type_basic L_PAR STRING R_PAR SEMICOLON                           { Variable_declaration ($3, $1, Annotation.create $loc) }
+| BEGIN statement_list END                                          { Block($2, Annotation.create $loc) }
+| IF expression THEN statement ELSE statement                       { IfThenElse( $2, $4, $6, Annotation.create $loc) }
+| IF expression THEN statement                                      { IfThenElse ($2, $4, Nop, Annotation.create $loc)}
+| FOR ID FROM expression TO expression STEP expression statement    { For ($2, $4, $6, $8, $9, Annotation.create $loc) }
+| FOREACH ID IN expression statement                                { Foreach ($2, $4, $5, Annotation.create $loc) }
+| DRAW L_PAR expression R_PAR SEMICOLON                             { Draw ($3, Annotation.create $loc) }
+| PRINT expression SEMICOLON                                        { Print ($2, Annotation.create $loc) }  
+
+statement_list:
+| statement { [$1] }
+| statement_list SEMICOLON statement { $3::$1 }  
+| { [] }
 
 expression:
-| INT                                                                   { Constant_i ($1 Annotation.create $loc) }
-| FLOAT                                                                 { Constant_f ($1 Annotation.create $loc) }
-| BOOL                                                                  { Constant_b ($1 Annotation.create $loc) }
-| POS L_PAR expression COMMA expression R_PAR                           { Pos ($3 $5 Annotation.create $loc) }
-| COLOR L_PAR expression COMMA expression COMMA expression R_PAR        { Color ($3 $5 $7 Annotation.create $loc) }
-| POINT L_PAR expression COMMA expression R_PAR                         { Point ($3 $5 Annotation.create $loc) }
-| ID                                                                    { Variable ($1 Annotation.create $loc) }
-| expression binop expression                                           { Binary_operator ($2 $1 $3 Annotation.create $loc)}
-| unop expression                                                       { Unary_operator ($1 $2 Annotation.create $loc)}
-| ID DOT X                                                              { Field_accessor( X_accessor $1 Annotation.create $loc) }
-| ID DOT Y                                                              { Field_accessor (Y_accessor $1 Annotation.create $loc) } 
-| ID DOT GREEN                                                          { Field_accessor (Green_accessor $1 Annotation.create $loc) }
-| ID DOT RED                                                            { Field_accessor (Red_accessor $1 Annotation.create $loc) }
-| ID DOT BLUE                                                           { Field_accessor (Blue_accessor $1 Annotation.create $loc) }
-| ID DOT COLOR                                                          { Field_accessor (Color_accessor $1 Annotation.create $loc) }
-| ID DOT POS                                                            { Field_accessor (Position_accessor $1 Annotation.create $loc) }
+| INT                                                                   { Constant_i ($1, Annotation.create $loc) }
+| FLOAT                                                                 { Constant_f ($1, Annotation.create $loc) }
+| BOOL                                                                  { Constant_b ($1, Annotation.create $loc) }
+| POS L_PAR expression COMMA expression R_PAR                           { Pos ($3, $5, Annotation.create $loc) }
+| COLOR L_PAR expression COMMA expression COMMA expression R_PAR        { Color ($3, $5, $7, Annotation.create $loc) }
+| POINT L_PAR expression COMMA expression R_PAR                         { Point ($3, $5, Annotation.create $loc) }
+| ID                                                                    { Variable ($1, Annotation.create $loc) }
+| expression binop expression                                           { Binary_operator ($2, $1, $3, Annotation.create $loc)}
+| unop expression                                                       { Unary_operator ($1, $2, Annotation.create $loc)}
+| expression DOT X                                                      { Field_accessor( X_accessor, $1, Annotation.create $loc) }
+| expression DOT Y                                                      { Field_accessor (Y_accessor, $1, Annotation.create $loc) } 
+| expression DOT GREEN                                                  { Field_accessor (Green_accessor, $1, Annotation.create $loc) }
+| expression DOT RED                                                    { Field_accessor (Red_accessor, $1, Annotation.create $loc) }
+| expression DOT BLUE                                                   { Field_accessor (Blue_accessor, $1, Annotation.create $loc) }
+| expression DOT COLOR                                                  { Field_accessor (Color_accessor, $1, Annotation.create $loc) }
+| expression DOT POS                                                    { Field_accessor (Position_accessor, $1, Annotation.create $loc) }
+| expression CONS expression                                            { Cons ($1, $3, Annotation.create $loc)}
+| L_SQ_BRK expression_list R_SQ_BRK                                     { List ($2, Annotation.create $loc)}
+
+
+expression_list:
+| expression { [$1] }
+| expression_list COMMA expression { $3::$1 }  
+| { [] }
 
 %inline binop:
 | ADD   { Add }
@@ -141,11 +156,11 @@ expression:
 | GEQ   { Ge }
 
 %inline unop:
-| SUB   { USub }
-| NOT   { Not }
-| HEAD  { Head }
-| TAIL  { Tail }
-| FLOOR { Floor }
-| FLOAT_OF_INT { Float_of_int }
-| COS { Cos }
-| SIN { Sin }
+| SUB               { USub }
+| NOT               { Not }
+| HEAD              { Head }
+| TAIL              { Tail }
+| FLOOR             { Floor }
+| FLOAT_OF_INT      { Float_of_int }
+| COS               { Cos }
+| SIN               { Sin }

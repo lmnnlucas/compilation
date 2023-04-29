@@ -28,17 +28,12 @@ rule token = parse
     | "Float"           { FLOAT_TYP }
     | "If"              { IF }
     | "Else"            { ELSE }
-    | "While"           { WHILE }
-    | "Do"              { DO }
     | "End"             { END }
     | "Begin"           { BEGIN }
-    | "Var"             { VAR }
     | "["               { L_SQ_BRK }
     | "]"               { R_SQ_BRK }
     | "("               { L_PAR }
     | ")"               { R_PAR }
-    | "{"               { L_CUR_BRK }
-    | "}"               { R_CUR_BRK }
     | ";"               { SEMICOLON }
     | ","               { COMMA }
     | "."               { DOT }
@@ -68,7 +63,6 @@ rule token = parse
     | "X"               { X }
     | "Y"               { Y }
     | "::"              { CONS }
-    | "Do"              { DO }
     | "Pi"              { FLOAT(Float.pi)}
 
 
