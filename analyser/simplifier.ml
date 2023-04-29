@@ -41,7 +41,7 @@ let rec simplify_expr expression =
       | USub, Constant_i(v,a) -> Constant_i((-v),a)
       | USub, Constant_f(v,a) -> Constant_f((-.v),a) 
       | Not, Constant_b(v,a) -> Constant_b((not v), a)
-      | Floor, Constant_f(v,a) -> Constant_f((floor v),a)
+      | Floor, Constant_f(v,a) -> Constant_i(int_of_float (floor v),a)
       | Float_of_int, Constant_i(v,a) -> Constant_f((float_of_int v),a)
       | Cos, Constant_f(v,a) -> Constant_f((cos v),a)
       | Sin, Constant_f(v,a) -> Constant_f((sin v),a)
@@ -51,16 +51,72 @@ let rec simplify_expr expression =
       let simp_e1 = simplify_expr e1 in
       let simp_e2 = simplify_expr e2 in
       match (op, simp_e1, simp_e2) with
+      (* Int section *)
       | Add, Constant_i (v1,a1), Constant_i (v2,_) -> Constant_i ((v1+v2),a1)
       | Sub, Constant_i (v1,a1), Constant_i (v2,_) -> Constant_i ((v1-v2),a1)
       | Mul, Constant_i (v1,a1), Constant_i (v2,_) -> Constant_i ((v1*v2),a1)
       | Div, Constant_i (v1,a1), Constant_i (v2,_) -> Constant_i ((v1/v2),a1)
       | Mod, Constant_i (v1,a1), Constant_i (v2,_) -> Constant_i ((v1 mod v2),a1)
+      (* Float section *)
       | Add, Constant_f (v1,a1), Constant_f (v2,_) -> Constant_f ((v1+.v2),a1)
       | Sub, Constant_f (v1,a1), Constant_f (v2,_) -> Constant_f ((v1-.v2),a1)
       | Mul, Constant_f (v1,a1), Constant_f (v2,_) -> Constant_f ((v1*.v2),a1)
       | Div, Constant_f (v1,a1), Constant_f (v2,_) -> Constant_f ((v1/.v2),a1)
       | Mod, Constant_f (v1,a1), Constant_f (v2,_) -> Constant_f ((mod_float v1 v2),a1)
+      (* Pos section *)
+      | Add, Pos(x1,y1,a1), Pos(x2,y2,_) -> Pos(simplify_expr (Binary_operator(Add,(simplify_expr x1),(simplify_expr x2),a1)),
+                                                simplify_expr (Binary_operator(Add,(simplify_expr y1),(simplify_expr y2),a1)),
+                                                a1)
+      | Sub, Pos (x1,y1,a1), Pos (x2,y2,_) -> Pos(simplify_expr (Binary_operator(Sub,(simplify_expr x1),(simplify_expr x2),a1)),
+                                                  simplify_expr (Binary_operator(Sub,(simplify_expr y1),(simplify_expr y2),a1)),
+                                                  a1)
+      | Mul, Pos (x1,y1,a1), Pos (x2,y2,_) -> Pos(simplify_expr (Binary_operator(Mul,(simplify_expr x1),(simplify_expr x2),a1)),
+                                                  simplify_expr (Binary_operator(Mul,(simplify_expr y1),(simplify_expr y2),a1)),
+                                                  a1)
+      | Div, Pos (x1,y1,a1), Pos (x2,y2,_) -> Pos(simplify_expr (Binary_operator(Div,(simplify_expr x1),(simplify_expr x2),a1)),
+                                                  simplify_expr (Binary_operator(Div,(simplify_expr y1),(simplify_expr y2),a1)),
+                                                  a1)
+      | Mod, Pos (x1,y1,a1), Pos (x2,y2,_) -> Pos(simplify_expr (Binary_operator(Mod,(simplify_expr x1),(simplify_expr x2),a1)),
+                                                  simplify_expr (Binary_operator(Mod,(simplify_expr y1),(simplify_expr y2),a1)),
+                                                  a1)
+      (* Color section *)
+      | Add, Color (r1,g1,b1,a1), Color (r2,g2,b2,_) -> Color(simplify_expr (Binary_operator(Add,(simplify_expr r1),(simplify_expr r2),a1)),
+                                                              simplify_expr (Binary_operator(Add,(simplify_expr g1),(simplify_expr g2),a1)),
+                                                              simplify_expr (Binary_operator(Add,(simplify_expr b1),(simplify_expr b2),a1)),
+                                                              a1)
+      | Sub, Color (r1,g1,b1,a1), Color (r2,g2,b2,_) -> Color(simplify_expr (Binary_operator(Sub,(simplify_expr r1),(simplify_expr r2),a1)),
+                                                              simplify_expr (Binary_operator(Sub,(simplify_expr g1),(simplify_expr g2),a1)),
+                                                              simplify_expr (Binary_operator(Sub,(simplify_expr b1),(simplify_expr b2),a1)),
+                                                              a1)
+      | Mul, Color (r1,g1,b1,a1), Color (r2,g2,b2,_) -> Color(simplify_expr (Binary_operator(Mul,(simplify_expr r1),(simplify_expr r2),a1)),
+                                                              simplify_expr (Binary_operator(Mul,(simplify_expr g1),(simplify_expr g2),a1)),
+                                                              simplify_expr (Binary_operator(Mul,(simplify_expr b1),(simplify_expr b2),a1)),
+                                                              a1)
+      | Div, Color (r1,g1,b1,a1), Color (r2,g2,b2,_) -> Color(simplify_expr (Binary_operator(Div,(simplify_expr r1),(simplify_expr r2),a1)),
+                                                              simplify_expr (Binary_operator(Div,(simplify_expr g1),(simplify_expr g2),a1)),
+                                                              simplify_expr (Binary_operator(Div,(simplify_expr b1),(simplify_expr b2),a1)),
+                                                              a1)
+      | Mod, Color (r1,g1,b1,a1), Color (r2,g2,b2,_) -> Color(simplify_expr (Binary_operator(Mod,(simplify_expr r1),(simplify_expr r2),a1)),
+                                                              simplify_expr (Binary_operator(Mod,(simplify_expr g1),(simplify_expr g2),a1)),
+                                                              simplify_expr (Binary_operator(Mod,(simplify_expr b1),(simplify_expr b2),a1)),
+                                                              a1)
+      (* Point section *)
+      | Add, Point (pos1,color1,a1), Point(pos2,color2,_) -> Point(simplify_expr (Binary_operator(Add,(simplify_expr pos1),(simplify_expr pos2),a1)),
+                                                                   simplify_expr (Binary_operator(Add,(simplify_expr color1),(simplify_expr color2),a1)),
+                                                                   a1)
+      | Sub, Point (pos1,color1,a1), Point(pos2,color2,_) -> Point(simplify_expr (Binary_operator(Sub,(simplify_expr pos1),(simplify_expr pos2),a1)),
+                                                                   simplify_expr (Binary_operator(Sub,(simplify_expr color1),(simplify_expr color2),a1)),
+                                                                   a1)
+      | Mul, Point (pos1,color1,a1), Point(pos2,color2,_) -> Point(simplify_expr (Binary_operator(Mul,(simplify_expr pos1),(simplify_expr pos2),a1)),
+                                                                   simplify_expr (Binary_operator(Mul,(simplify_expr color1),(simplify_expr color2),a1)),
+                                                                   a1)
+      | Div, Point (pos1,color1,a1), Point(pos2,color2,_) -> Point(simplify_expr (Binary_operator(Div,(simplify_expr pos1),(simplify_expr pos2),a1)),
+                                                                   simplify_expr (Binary_operator(Div,(simplify_expr color1),(simplify_expr color2),a1)),
+                                                                   a1)
+      | Mod, Point (pos1,color1,a1), Point(pos2,color2,_) -> Point(simplify_expr (Binary_operator(Mod,(simplify_expr pos1),(simplify_expr pos2),a1)),
+                                                                   simplify_expr (Binary_operator(Mod,(simplify_expr color1),(simplify_expr color2),a1)),
+                                                                   a1)
+      (* Bool section *)
       | And, Constant_b (v1,a1), Constant_b (v2,_) -> Constant_b ((v1 && v2),a1)
       | Or, Constant_b (v1,a1), Constant_b (v2,_) -> Constant_b ((v1 || v2),a1)
       | Eq, Constant_b (v1,a1), Constant_b (v2,_) -> Constant_b ((v1 == v2),a1)
