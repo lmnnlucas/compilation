@@ -124,16 +124,18 @@ expression:
 | ID                                                                    { Variable ($1, Annotation.create $loc) }
 | expression binop expression                                           { Binary_operator ($2, $1, $3, Annotation.create $loc)}
 | unop expression                                                       { Unary_operator ($1, $2, Annotation.create $loc)}
-| expression DOT X                                                      { Field_accessor( X_accessor, $1, Annotation.create $loc) }
-| expression DOT Y                                                      { Field_accessor (Y_accessor, $1, Annotation.create $loc) } 
-| expression DOT GREEN                                                  { Field_accessor (Green_accessor, $1, Annotation.create $loc) }
-| expression DOT RED                                                    { Field_accessor (Red_accessor, $1, Annotation.create $loc) }
-| expression DOT BLUE                                                   { Field_accessor (Blue_accessor, $1, Annotation.create $loc) }
-| expression DOT COLOR                                                  { Field_accessor (Color_accessor, $1, Annotation.create $loc) }
-| expression DOT POS                                                    { Field_accessor (Position_accessor, $1, Annotation.create $loc) }
+| expression DOT field_accessor                                         { Field_accessor($3, $1, Annotation.create $loc) }
 | expression CONS expression                                            { Cons ($1, $3, Annotation.create $loc)}
 | L_SQ_BRK expression_list R_SQ_BRK                                     { List ($2, Annotation.create $loc)}
 
+field_accessor:
+| X     { X_accessor }
+| Y     { Y_accessor }
+| GREEN { Green_accessor }
+| RED   { Red_accessor }
+| BLUE  { Blue_accessor }
+| COLOR { Color_accessor }
+| POS   { Position_accessor }
 
 expression_list:
 | expression { [$1] }
