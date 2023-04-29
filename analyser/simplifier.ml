@@ -193,7 +193,8 @@ let rec simplify_statement statement =
     ) 
     | Foreach(var,list,body,a) -> (
       let simp_body = simplify_statement body in
-      Foreach(var,list,simp_body,a)
+      let simp_list = simplify_expr list in
+      Foreach(var,simp_list,simp_body,a)
     )
     | Draw(e,a) -> (
       let simp_e = simplify_expr e in
