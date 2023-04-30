@@ -8,6 +8,6 @@ Begin
         Begin
         Int(y);
         For y From 0 To length Step 1
-            Draw(Point(Pos(x,y),Color(0,0,0)));
+            Draw(Point(Pos(x,y),Color(0,0,0)))
         End
 End

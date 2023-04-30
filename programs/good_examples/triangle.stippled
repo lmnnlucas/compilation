@@ -21,9 +21,9 @@ Begin
         Draw (point)
     End;
     Float(step);
-    Float(deltaX);
+    Int(deltaX);
     Copy(deltaX, (c.X - a.X));
-    Float(deltaY);
+    Int(deltaY);
     Copy(deltaY, (c.Y - a.Y));
     Copy(step, Float_of_int(deltaY) / Float_of_int(deltaX));
     Float(i);

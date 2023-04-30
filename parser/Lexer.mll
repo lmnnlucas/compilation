@@ -64,9 +64,10 @@ rule token = parse
     | "Y"               { Y }
     | "::"              { CONS }
     | "Pi"              { FLOAT(Float.pi)}
-
-
-    | "\"" ([^ '\"']* as s) "\""  { STRING(s) }
+    | "/*"              { commentary lexbuf}
+    | "//"              { single_commentary lexbuf}
+    | " "               { token lexbuf }
+    | "\n"              { Lexing.new_line lexbuf; token lexbuf}
     | (digit)* "." (digit)* as s {FLOAT(try float_of_string s with Failure _ -> raise (Error(s)) )}
     | (digit)+ as s     { INT(try int_of_string s with Failure _ ->(let pos = Lexing.lexeme_start_p lexbuf in raise (Error(Format.sprintf "Line %d, char %d ,Read: '%s'. It is not a valid integer" pos.pos_lnum (pos.pos_cnum - pos.pos_bol +1) s)) ))}
     | ['a'-'z' 'A'-'Z'] (alphanum)* as s  { ID(s) }
@@ -77,3 +78,6 @@ and commentary = parse
     | '\n'      {Lexing.new_line lexbuf; commentary lexbuf}
     | "*/"      { token lexbuf }
     | _ { commentary lexbuf }
+and single_commentary = parse
+    | '\n' {Lexing.new_line lexbuf; token lexbuf}
+    | _ { single_commentary lexbuf}
