@@ -13,7 +13,7 @@ Begin
     // Affectations bien typées
     Copy(k, 6+36-7*2%7);
     Copy(l, k);
-    Copy(x, 66+36-7*2/56);
+    Copy(x, 66.0+36.5-7.2*2.5/56.3);
     Copy(b, True And False Or Not True);
     Copy(p, Pos(1+2, 7-5));
     Copy(c, Color(255, 255, 255));

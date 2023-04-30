@@ -21,3 +21,5 @@ let get (env : 'a t) var = Option.map (fun a -> !a) (get_ref env var)
 
 let modify (env : 'a t) var typ =
   match get_ref env var with Some r -> r := typ | None -> add env var typ
+
+let is_def_in_current_layer (env : 'a t) var = Hashtbl.mem (List.hd !env) var

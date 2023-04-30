@@ -30,6 +30,10 @@ open Ast
   | Eq | Ne -> [Type_int; Type_float; Type_bool; Type_pos; Type_color; Type_point]
   | Lt | Gt | Le | Ge -> [Type_int; Type_float]
 
+  let is_comparison_binop = function
+  | Eq | Ne | Lt | Gt | Le | Ge -> true
+  | _ -> false
+
   let rec type_expression report env expression =
 
     match expression with
@@ -39,7 +43,7 @@ open Ast
     | Variable(name,a) -> (
       match Environment.get env name with
       | Some t -> Annotation.set_type a t
-      | None -> Error_report.add_error report ("No type found for the desired variable", Annotation.get_pos a); a
+      | None -> Error_report.add_error report (Format.sprintf "Variable %s is not declared" name, Annotation.get_pos a); a
     )
     | Pos(x,y,a) -> (
       let type_x = Annotation.get_type (type_expression report env x) in
@@ -74,14 +78,14 @@ open Ast
       | USub, _ -> Error_report.add_error report ("Minus operator only accept Int or Float type", Annotation.get_pos a);a
       | Not, Some Type_bool -> Annotation.set_type a Type_bool
       | Not, _ -> Error_report.add_error report ("Not operator only accept Bool type",Annotation.get_pos a); a
-      | Head, Some Type_list(t) -> Annotation.set_type a (Type_list(t))
+      | Head, Some Type_list(t) -> Annotation.set_type a t
       | Head, _ -> Error_report.add_error report ("Head operator only accept List type", Annotation.get_pos a); a
       | Tail, Some Type_list(t) -> Annotation.set_type a (Type_list(t))
       | Tail, _ -> Error_report.add_error report ("Tail operator only accept List type", Annotation.get_pos a); a
-      | Floor, Some Type_float -> Annotation.set_type a Type_float
+      | Floor, Some Type_float -> Annotation.set_type a Type_int
       | Floor, _ -> Error_report.add_error report ("Floor operator only accept Float type", Annotation.get_pos a); a
-      | Float_of_int, Some Type_float -> Annotation.set_type a Type_float
-      | Float_of_int, _ -> Error_report.add_error report ("Float_of_int operator only accept Float type", Annotation.get_pos a); a
+      | Float_of_int, Some Type_int -> Annotation.set_type a Type_float
+      | Float_of_int, _ -> Error_report.add_error report ("Float_of_int operator only accept Int type", Annotation.get_pos a); a
       | Cos, Some Type_float -> Annotation.set_type a Type_float
       | Cos, _ -> Error_report.add_error report ("Cos operator only accept Float type", Annotation.get_pos a); a
       | Sin, Some Type_float -> Annotation.set_type a Type_float
@@ -100,7 +104,13 @@ open Ast
           | true, false, true -> Error_report.add_error report (Format.sprintf "Invalid List type between %s and %s for %s operator" (string_of_type_expr t1) (string_of_type_expr t2) (string_of_binary_operator binop), Annotation.get_pos a); a
           | false, true, false -> Error_report.add_error report (Format.sprintf "invalid type %s for %s operator" (string_of_type_expr t1) (string_of_binary_operator binop), Annotation.get_pos a); a
           | false, false, true -> Error_report.add_error report (Format.sprintf "Invalid types %s and %s for %s operator" (string_of_type_expr t1) (string_of_type_expr t2) (string_of_binary_operator binop), Annotation.get_pos a); a
-          | _ -> Annotation.set_type a t1)
+          | _ -> (
+              if not (is_comparison_binop binop) then
+                Annotation.set_type a t1
+              else
+                Annotation.set_type a Type_bool
+            )
+          )
       | _ -> Error_report.add_warning report ("Non-typed expression found, there could be an issue with a variable declaration", Annotation.get_pos a); a
     )
     | Field_accessor(fa,e,a) -> (
@@ -108,27 +118,44 @@ open Ast
       (match type_e with
         | Some t -> (
           match fa, t with
-          | (Color_accessor | Position_accessor), Type_point -> Annotation.set_type a Type_point
-          | (X_accessor | Y_accessor), Type_pos -> Annotation.set_type a Type_pos
-          | (Red_accessor | Green_accessor | Blue_accessor ), Type_color -> Annotation.set_type a Type_color
+          | Color_accessor, Type_point -> Annotation.set_type a Type_color
+          | Position_accessor, Type_point -> Annotation.set_type a Type_point
+          | (X_accessor | Y_accessor), Type_pos -> Annotation.set_type a Type_int
+          | (Red_accessor | Green_accessor | Blue_accessor ), Type_color -> Annotation.set_type a Type_int
           | _ -> Error_report.add_error report (Format.sprintf "Cannot use accessor %s on %s" (string_of_field_accessor fa) (string_of_type_expr t), Annotation.get_pos a); a
         )
         | None -> Error_report.add_warning report ("Non-typed expression found, there could be an issue with a variable declaration", Annotation.get_pos a); a
       )
     )
     | List(elist,a) -> (
-      let t_list = Annotation.get_type a in
-      (List.iter (fun e -> (
-        let type_e = Annotation.get_type (type_expression report env e) in
-        (match type_e, t_list with
-        | Some t, Some tl -> (
-            if(t <> tl) then
-              Error_report.add_error report (Format.sprintf "Invalid type %s in a list of type %s" (string_of_type_expr t) (string_of_type_expr tl), Annotation.get_pos a)
-          )
-        | None,_ -> Error_report.add_warning report ("Non-typed expression found, there could be an issue with a variable declaration", Annotation.get_pos a)
-        | _, None -> () (*Empty list*)
+      if List.length elist == 0 then
+        a
+      else
+        (
+          let coherent = ref true in
+          let definitive_type = ref (Type_list(Type_int)) in
+          let type_list = Annotation.get_type (type_expression report env (List.hd elist)) in
+          List.iter (fun e -> (
+            let type_e = Annotation.get_type (type_expression report env e) in
+            (match type_e, type_list with
+             | Some t, Some tl -> (
+                if(t != tl) then
+                  (
+                    if(coherent.contents) then (* Avoid the error spam *)
+                      Error_report.add_error report ("Incoherent type found in this list", Annotation.get_pos a); coherent := false
+                  )
+                else
+                  definitive_type := t
+              )
+             | Some _, None -> coherent := false (* Error report was already triggered on first element *)
+             | _ -> Error_report.add_warning report ("Non-typed expression found, there could be an issue with a variable declaration", Annotation.get_pos a); coherent := false
+            )
+        )) elist;
+        if coherent.contents then
+          Annotation.set_type a (Type_list(definitive_type.contents))
+        else
+          a
         )
-      )) elist); a
     )
     | Cons(e1,e2,a) -> (
       let opt_type_e1 = Annotation.get_type (type_expression report env e1) in
@@ -167,18 +194,37 @@ open Ast
       match id with
       | Variable(name,_) -> (match (Environment.get env name), type_e with
                              | Some resolved_type, Some expr_type -> if resolved_type <> expr_type then
-                                                                      Error_report.add_error report (Format.sprintf "Variable %s was declared as a %s but the assignement value is a %s" name (string_of_type_expr resolved_type) (string_of_type_expr expr_type), Annotation.get_pos a)                                                      
-                             | None,_ -> Error_report.add_error report ("Variable isn't declared in this context", Annotation.get_pos a)
+                                                                      Error_report.add_error report (Format.sprintf "Variable %s was declared as a %s but the assignment value is a %s" name (string_of_type_expr resolved_type) (string_of_type_expr expr_type), Annotation.get_pos a)                                                      
+                             | None,_ -> Error_report.add_error report (Format.sprintf "Variable %s isn't declared in this context" name, Annotation.get_pos a)
                              | Some _, None -> ()
                             )
-      | _ -> Error_report.add_error report ("Copy only works when the first argument is a variable.", Annotation.get_pos a)
+      | Field_accessor(_) ->  (
+                                let type_fa = Annotation.get_type (type_expression report env e) in
+                                (match type_fa, type_e with
+                                 | Some type_accessor, Some type_expr -> if (type_accessor <> type_expr) then
+                                                                            Error_report.add_error report (Format.sprintf "Field accessor is of type %s but the asssignment value is a %s" (string_of_type_expr type_accessor) (string_of_type_expr type_expr), Annotation.get_pos a)
+                                 | None, Some _ -> Error_report.add_warning report ("Field accesor might not be used correctly or the used variable is not declared", Annotation.get_pos a)
+                                 | Some _, None -> Error_report.add_warning report ("The used assignement variable might not be declared",Annotation.get_pos a)
+                                 | None, None -> Error_report.add_error report ("Both values are not declared",Annotation.get_pos a)
+                                )
+                              )
+      | _ -> Error_report.add_error report ("Copy only works when the first argument is a variable or a field accessor.", Annotation.get_pos a)
     )
     | Variable_declaration(name, expression_type, a) -> (
       let variable_decl = Environment.get env name in
       
       match variable_decl with
-      | Some _ -> Error_report.add_error report (Format.sprintf "A variable with the name %s is already declared" name, Annotation.get_pos a)
-      | None -> Environment.add env name expression_type
+      | Some t -> if t == expression_type then 
+                    (
+                      Error_report.add_warning report (Format.sprintf "A variable with the name %s and type %s is already declared" name (string_of_type_expr t), Annotation.get_pos a);
+                      Environment.add env name expression_type
+                    )
+                  else
+                    if (Environment.is_def_in_current_layer env name) then
+                      Error_report.add_error report (Format.sprintf "The variable %s is already defined in this block" name, Annotation.get_pos a)
+                    else
+                      Environment.add env name expression_type
+      | None -> Environment.add env name expression_type 
     )
     | Block(content,_) -> (
       Environment.add_layer env;
@@ -195,21 +241,21 @@ open Ast
       | _ -> Error_report.add_error report ("If condition need to be of type bool", Annotation.get_pos a)
     )
     | For(var_name, init, target, step, body, a) -> (
-      let decl_var = Environment.get env var_name in
-      (match decl_var with
-      | Some _ -> Error_report.add_error report (Format.sprintf "Variable %s is already defined" var_name, Annotation.get_pos a)
-      | None -> (
         let type_init = Annotation.get_type (type_expression report env init) in
         let type_target = Annotation.get_type (type_expression report env target) in
         let type_step = Annotation.get_type (type_expression report env step) in
         
-        (match type_init, type_target, type_step with
-            | Some ti, Some tt, Some ts -> (match ti,tt,ts with
-                                            | (Type_int | Type_float), (Type_int | Type_float), (Type_int | Type_float) -> (
+        let var_decl = Environment.get env var_name in
+        (match var_decl with
+         | Some var_type ->  if var_type == Type_int || var_type == Type_float then
+                              (* Check if the 3 arguments *) 
+                              (match type_init, type_target, type_step with
+                                | Some ti, Some tt, Some ts -> 
+                                        (match ti,tt,ts with 
+                                         | (Type_int | Type_float), (Type_int | Type_float), (Type_int | Type_float) -> (
                                                 if (ti == tt) && (tt == ts) then
                                                 (
                                                   Environment.add_layer env;
-                                                  Environment.add env var_name ti;
                                                   type_statement report env body;
                                                   Environment.remove_layer env;
                                                 ) 
@@ -217,31 +263,29 @@ open Ast
                                                   Error_report.add_error report (
                                                     Format.sprintf "Invalid signature detected, types mismatch init : %s, target : %s, step : %s" (string_of_type_expr ti) (string_of_type_expr tt) (string_of_type_expr ts), 
                                                     Annotation.get_pos a)
+                                          )
+                                          | _ -> Error_report.add_error report ("Invalid signature detected : for loop only supports Int and float types", Annotation.get_pos a) 
                                         )
-                                      | _ -> Error_report.add_error report (
-                                        Format.sprintf "For loop only support Int and Float type in it's signature", 
-                                        Annotation.get_pos a)
-                                      )
-            | _ -> Error_report.add_warning report ("Undeclared variable or empty list detected", Annotation.get_pos a)
-          )
+                                | _ -> Error_report.add_warning report ("Undeclared variable or empty list detected", Annotation.get_pos a)
+                              )
+                            else
+                              Error_report.add_error report (Format.sprintf "Variable %s is declared as an %s but the for loop only supports Integer and Float type" var_name (string_of_type_expr var_type), Annotation.get_pos a)
+         | None -> Error_report.add_error report (Format.sprintf "Variable %s should be declared to be used as an iterator" var_name, Annotation.get_pos a)
         )
-      )
     )
     | Foreach(name,list,body,a) -> (
       let type_list = Annotation.get_type (type_expression report env list) in
 
       match type_list with
-      | Some Type_list(inner_type) -> (
+      | Some Type_list(_) -> (
         let var_decl = Environment.get env name in
         match var_decl with
-        | Some _ -> Error_report.add_error report (Format.sprintf "A variable with the name %s is already declared" name, Annotation.get_pos a)
-        | None -> (
+        | Some _ -> (
           Environment.add_layer env;
-          Environment.add env name inner_type;
-          Environment.add_ref env name (ref(inner_type));
           type_statement report env body;
           Environment.remove_layer env
-        ) 
+        )
+        | None -> Error_report.add_error report (Format.sprintf "There is no declared variable with the name %s" name, Annotation.get_pos a)
       )
       | _ -> Error_report.add_error report ("Second argument should be of type List", Annotation.get_pos a)
     )  
@@ -266,3 +310,4 @@ open Ast
         ) al;
         type_statement report type_environment s
       )
+    
