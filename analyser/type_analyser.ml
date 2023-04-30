@@ -248,7 +248,7 @@ open Ast
         let var_decl = Environment.get env var_name in
         (match var_decl with
          | Some var_type ->  if var_type == Type_int || var_type == Type_float then
-                              (* Check if the 3 arguments *) 
+                              (* Check if the 3 arguments are of the same supported type *) 
                               (match type_init, type_target, type_step with
                                 | Some ti, Some tt, Some ts -> 
                                         (match ti,tt,ts with 
@@ -300,7 +300,7 @@ open Ast
       let _ = type_expression report env e in
       ()
     )
-  
+
   let type_analyser report program =
     let type_environment = Environment.new_environment () in
       match program with 
@@ -310,4 +310,3 @@ open Ast
         ) al;
         type_statement report type_environment s
       )
-    
