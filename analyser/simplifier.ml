@@ -17,8 +17,6 @@ open Ast
     Vous détaillerez dans le rapport les différents cas que vous simplifiez dans votre simplificateur.
 *)
 
-let simplifier program = program
-
 let rec simplify_expr expression = 
   let simplified_expr = 
     match expression with
@@ -208,3 +206,10 @@ let rec simplify_statement statement =
     | _ -> statement 
   in
   simplified_statement
+
+  let simplifier program = 
+    match program with
+    | Program(al,s) -> (
+        let simp_body = simplify_statement s in
+        Program(al,simp_body);
+      )

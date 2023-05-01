@@ -275,20 +275,30 @@ open Ast
     )
     | Foreach(name,list,body,a) -> (
       let type_list = Annotation.get_type (type_expression report env list) in
-
+      
       match type_list with
-      | Some Type_list(_) -> (
+      | Some Type_list(inner_list_type) -> (
         let var_decl = Environment.get env name in
-        match var_decl with
-        | Some _ -> (
+        (match var_decl with
+        | Some resolved_type -> (
+          if resolved_type == inner_list_type then
+            (
+            Environment.add_layer env;
+            type_statement report env body;
+            Environment.remove_layer env
+            )
+          else
+            Error_report.add_error report (Format.sprintf "Variable %s is already defined as a %s which is not the given list type : %s" name (string_of_type_expr resolved_type) (string_of_type_expr inner_list_type), Annotation.get_pos a)
+        )
+        | None -> (
           Environment.add_layer env;
+          Environment.add env name inner_list_type;
           type_statement report env body;
           Environment.remove_layer env
-        )
-        | None -> Error_report.add_error report (Format.sprintf "There is no declared variable with the name %s" name, Annotation.get_pos a)
+        ))
       )
       | _ -> Error_report.add_error report ("Second argument should be of type List", Annotation.get_pos a)
-    )  
+    )
     | Draw(e,a) -> (
       let type_e = Annotation.get_type (type_expression report env e) in
       match type_e with

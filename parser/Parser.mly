@@ -86,7 +86,7 @@ main:
 
 argument:
 | type_basic L_PAR ID R_PAR                      { Argument ($3, $1, Annotation.create $loc) }
-| LIST L_PAR type_basic R_PAR L_PAR ID R_PAR     { Argument ($6, $3, Annotation.create $loc) }
+| LIST L_PAR type_basic R_PAR L_PAR ID R_PAR     { Argument ($6, Type_list($3), Annotation.create $loc) }
 
 argument_list:
 | argument { [$1] }
