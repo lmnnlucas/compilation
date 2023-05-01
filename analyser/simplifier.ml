@@ -194,6 +194,16 @@ let rec simplify_statement statement =
       let simp_list = simplify_expr list in
       Foreach(var,simp_list,simp_body,a)
     )
+    | While (cond,body,a) -> (
+      let simp_cond = simplify_expr cond in
+      let simp_body = simplify_statement body in
+
+      (match simp_cond with
+      | Constant_b(true,_) -> simp_body
+      | Constant_b(false,_) -> Nop
+      | _ -> While(simp_cond,simp_body,a)
+      ) 
+    )
     | Draw(e,a) -> (
       let simp_e = simplify_expr e in
       Draw(simp_e,a)

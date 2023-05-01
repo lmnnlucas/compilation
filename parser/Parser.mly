@@ -56,6 +56,9 @@
 %token Y
 %token CONS
 
+%token WHILE
+%token DO
+
 %token <string> ID
 %token <int> INT
 %token <float> FLOAT
@@ -106,6 +109,7 @@ statement:
 | LIST L_PAR type_basic R_PAR L_PAR ID R_PAR                        { Variable_declaration ($6, Type_list($3), Annotation.create $loc) }
 | type_basic L_PAR ID R_PAR                                         { Variable_declaration ($3, $1, Annotation.create $loc) }
 | BEGIN statement_list END                                          { Block(List.rev $2, Annotation.create $loc) }
+| WHILE expression DO statement                                     { While($2,$4, Annotation.create $loc) }
 | IF expression statement ELSE statement                            { IfThenElse( $2, $3, $5, Annotation.create $loc) }
 | IF expression statement                                           { IfThenElse ($2, $3, Nop, Annotation.create $loc)}
 | FOR ID FROM expression TO expression STEP expression statement    { For ($2, $4, $6, $8, $9, Annotation.create $loc) }

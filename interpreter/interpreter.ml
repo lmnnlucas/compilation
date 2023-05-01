@@ -289,6 +289,13 @@ let rec interpret_statement environment = function
             l;
           Environment.remove_layer environment
       | _ -> failwith "Iterating on something else than a list")
+  | While (condition, body, _) -> (
+      Environment.add_layer environment;
+      while (interpret_expression environment condition = Bool true) do
+        interpret_statement environment body;
+      done;
+      Environment.remove_layer environment
+  )
   | Draw (expression, _) -> (
       match interpret_expression environment expression with
       | Point p ->

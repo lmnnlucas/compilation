@@ -334,6 +334,16 @@ open Ast
       )
       | _ -> Error_report.add_error report ("Second argument should be of type List", Annotation.get_pos a)
     )
+    | While(cond,body,a) ->(
+      let type_cond = Annotation.get_type (type_expression report env cond) in
+      match type_cond with
+      | Some Type_bool -> (
+        Environment.add_layer env;
+        type_statement report env body;
+        Environment.remove_layer env
+      )
+      | _ -> Error_report.add_error report ("While loop need a boolean condition", Annotation.get_pos a)
+    )
     | Draw(e,a) -> (
       let type_e = Annotation.get_type (type_expression report type_env init_env e) in
       match type_e with

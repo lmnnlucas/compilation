@@ -64,6 +64,8 @@ rule token = parse
     | "Y"               { Y }
     | "::"              { CONS }
     | "Pi"              { FLOAT(Float.pi)}
+    | "While"           { WHILE }
+    | "do"              { DO }
     | "/*"              { commentary lexbuf}
     | "//"              { single_commentary lexbuf}
     | " "               { token lexbuf }

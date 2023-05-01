@@ -105,6 +105,8 @@ type statement =
       (** For loop. [For(str,init,target,step,body,annot)] starts by initialising variable [str] (which must be declared) to the value of [init], and executes [body] and then increments [str] by the value of [step] as long as the value in [str] is smaller than that of [target]. [target] is reevaluated at each step. Can be used for {!Type_int} or {!Type_float} variables*)
   | Foreach of string * expression * statement * Annotation.t
       (** [Foreach(str,list,body,annotation)] requires that [list] is a {!Type_list}. It applies [body] to every element of the list (from left to right). In [body], the current element of the loop is stored in variable [str] (which is not required to be declared)*)
+  | While of expression * statement * Annotation.t
+      (** [While(condition,body)] Needs a condition and execute the body while the condition is true *)
   | Draw of expression * Annotation.t
       (** [Draw(point,annot)] draws [point] on the window of the program. [point] must be of type {!Type_point}*)
   | Nop

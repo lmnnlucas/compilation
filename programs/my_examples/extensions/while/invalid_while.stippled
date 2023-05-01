@@ -1,0 +1,11 @@
+//Draw a diagonal of points
+
+Begin
+    Int(i);
+    Copy(i,0);
+    While 3 do
+    Begin 
+        Draw(Point(Pos(100+(i*3), 100+(i*3)), Color(100+(i*5),100+i,100+(i*5))));
+        Copy(i,i+1)
+    End
+End

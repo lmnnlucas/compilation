@@ -76,6 +76,7 @@ type statement =
   | For of
       string * expression * expression * expression * statement * Annotation.t
   | Foreach of string * expression * statement * Annotation.t
+  | While of expression * statement * Annotation.t
   | Draw of expression * Annotation.t
   | Nop
   | Print of expression * Annotation.t
@@ -195,6 +196,10 @@ let rec pp_statement fmt = function
       Format.fprintf fmt "@[<v 2>Foreach %s In %s@,%a@]" name
         (string_of_expression expression)
         pp_statement statement
+  | While (expression,statement,_) ->
+      Format.fprintf fmt "@[<v 2>While %s do@,%a@]" 
+      (string_of_expression expression) 
+      pp_statement statement
   | Draw (expression, _) ->
       Format.fprintf fmt "Draw(%s)" (string_of_expression expression)
   | Nop -> ()
