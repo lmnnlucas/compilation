@@ -252,6 +252,8 @@ let rec interpret_statement environment = function
                 color = { red = 0; green = 0; blue = 0 };
               }
         | Type_list _ -> List [])
+  | Variable_declaration_init (name,_,expression,_) ->
+      Environment.add environment name (interpret_expression environment expression)
   | Block (list, _) ->
       Environment.add_layer environment;
       List.iter (interpret_statement environment) list;

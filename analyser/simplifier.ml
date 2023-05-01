@@ -213,6 +213,9 @@ let rec simplify_statement statement =
       let simp_e = simplify_expr e in
       Print(simp_e,a)
     )
+    | Variable_declaration_init(n,t,e,a) -> (
+      Variable_declaration_init(n,t,(simplify_expr e),a)
+    )
     | _ -> statement 
   in
   simplified_statement

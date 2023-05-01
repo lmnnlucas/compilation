@@ -258,6 +258,35 @@ open Ast
                       Environment.add type_env name expression_type
       | None -> Environment.add type_env name expression_type 
     )
+    | Variable_declaration_init(name,var_type,expression,a) -> (
+      let variable_decl = Environment.get env name in
+
+      let type_expression = Annotation.get_type (type_expression report env expression) in
+
+      (match type_expression with
+        | Some te -> (
+          if te == var_type then
+            (match variable_decl with
+            | Some resolved_type -> (
+              if resolved_type == var_type then 
+              (
+                Error_report.add_warning report (Format.sprintf "A variable with the name %s and type %s is already declared" name (string_of_type_expr resolved_type), Annotation.get_pos a);
+                Environment.add env name var_type
+              )
+                else
+                  if (Environment.is_def_in_current_layer env name) then
+                    Error_report.add_error report (Format.sprintf "The variable %s is already defined in this block" name, Annotation.get_pos a)
+                  else
+                    Environment.add env name var_type
+                )
+              | None -> Environment.add env name var_type
+            )
+            else
+              Error_report.add_error report (Format.sprintf "Can't assign type %s to a variable of type %s" (string_of_type_expr te) (string_of_type_expr var_type), Annotation.get_pos a)
+        )
+        | None -> Error_report.add_warning report ("Non-typed expression detected", Annotation.get_pos a)
+      )
+    )
     | Block(content,_) -> (
       Environment.add_layer type_env;
       List.iter (fun s -> type_statement report type_env init_env s) content;

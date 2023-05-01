@@ -108,6 +108,8 @@ statement:
 | COPY L_PAR expression COMMA expression R_PAR                      { Assignment ($3, $5, Annotation.create $loc) }
 | LIST L_PAR type_basic R_PAR L_PAR ID R_PAR                        { Variable_declaration ($6, Type_list($3), Annotation.create $loc) }
 | type_basic L_PAR ID R_PAR                                         { Variable_declaration ($3, $1, Annotation.create $loc) }
+| LIST L_PAR type_basic R_PAR L_PAR ID COMMA expression R_PAR       { Variable_declaration_init ($6, Type_list($3),$8, Annotation.create $loc) }
+| type_basic L_PAR ID COMMA expression R_PAR                        { Variable_declaration_init ($3, $1, $5, Annotation.create $loc) }
 | BEGIN statement_list END                                          { Block(List.rev $2, Annotation.create $loc) }
 | WHILE expression DO statement                                     { While($2,$4, Annotation.create $loc) }
 | IF expression statement ELSE statement                            { IfThenElse( $2, $3, $5, Annotation.create $loc) }

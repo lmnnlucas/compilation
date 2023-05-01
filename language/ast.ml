@@ -71,6 +71,7 @@ type expression =
 type statement =
   | Assignment of expression * expression * Annotation.t
   | Variable_declaration of string * type_expr * Annotation.t
+  | Variable_declaration_init of string * type_expr * expression * Annotation.t
   | Block of statement list * Annotation.t
   | IfThenElse of expression * statement * statement * Annotation.t
   | For of
@@ -175,6 +176,8 @@ let rec pp_statement fmt = function
         (string_of_expression expression)
   | Variable_declaration (name, type_expr, _) ->
       Format.fprintf fmt "%s(%s)" (string_of_type_expr type_expr) name
+  | Variable_declaration_init (name, type_expr, expression, _) ->
+      Format.fprintf fmt "%s(%s,%s)" (string_of_type_expr type_expr) name (string_of_expression expression)
   | Block (list_statements, _) ->
       Format.fprintf fmt "Begin@[<v 2>@,%a@]@,End" pp_list_statements
         list_statements

@@ -97,6 +97,7 @@ type expression =
 type statement =
   | Assignment of expression * expression * Annotation.t
   | Variable_declaration of string * type_expr * Annotation.t
+  | Variable_declaration_init of string * type_expr * expression * Annotation.t
   | Block of statement list * Annotation.t
       (** Block of consecutive statements. Declarations in this block are local to it*)
   | IfThenElse of expression * statement * statement * Annotation.t
