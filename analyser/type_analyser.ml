@@ -259,33 +259,24 @@ open Ast
       | None -> Environment.add type_env name expression_type 
     )
     | Variable_declaration_init(name,var_type,expression,a) -> (
-      let variable_decl = Environment.get env name in
-
-      let type_expression = Annotation.get_type (type_expression report env expression) in
-
-      (match type_expression with
-        | Some te -> (
-          if te == var_type then
-            (match variable_decl with
-            | Some resolved_type -> (
-              if resolved_type == var_type then 
-              (
-                Error_report.add_warning report (Format.sprintf "A variable with the name %s and type %s is already declared" name (string_of_type_expr resolved_type), Annotation.get_pos a);
-                Environment.add env name var_type
-              )
-                else
-                  if (Environment.is_def_in_current_layer env name) then
-                    Error_report.add_error report (Format.sprintf "The variable %s is already defined in this block" name, Annotation.get_pos a)
+        let variable_decl = Environment.get type_env name in
+      
+        (match variable_decl with
+        | Some t -> if t == var_type then 
+                    (
+                      Error_report.add_warning report (Format.sprintf "A variable with the name %s and type %s is already declared" name (string_of_type_expr t), Annotation.get_pos a);
+                      Environment.add type_env name var_type
+                    )
                   else
-                    Environment.add env name var_type
-                )
-              | None -> Environment.add env name var_type
-            )
-            else
-              Error_report.add_error report (Format.sprintf "Can't assign type %s to a variable of type %s" (string_of_type_expr te) (string_of_type_expr var_type), Annotation.get_pos a)
-        )
-        | None -> Error_report.add_warning report ("Non-typed expression detected", Annotation.get_pos a)
-      )
+                    (
+                    if (Environment.is_def_in_current_layer type_env name) then
+                      Error_report.add_error report (Format.sprintf "The variable %s is already defined in this block" name, Annotation.get_pos a)
+                    else
+                      Environment.add type_env name var_type
+                    )
+        | None -> Environment.add type_env name var_type
+      );
+      type_statement report type_env init_env (Assignment(Variable(name,a),expression,a))
     )
     | Block(content,_) -> (
       Environment.add_layer type_env;
@@ -364,12 +355,12 @@ open Ast
       | _ -> Error_report.add_error report ("Second argument should be of type List", Annotation.get_pos a)
     )
     | While(cond,body,a) ->(
-      let type_cond = Annotation.get_type (type_expression report env cond) in
+      let type_cond = Annotation.get_type (type_expression report type_env init_env cond) in
       match type_cond with
       | Some Type_bool -> (
-        Environment.add_layer env;
-        type_statement report env body;
-        Environment.remove_layer env
+        Environment.add_layer type_env;
+        type_statement report type_env init_env body;
+        Environment.remove_layer type_env
       )
       | _ -> Error_report.add_error report ("While loop need a boolean condition", Annotation.get_pos a)
     )
